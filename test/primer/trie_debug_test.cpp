@@ -27,7 +27,7 @@ TEST(TrieDebugger, TestCase) {
 
   // Put a breakpoint here.
 
-  // (1) How many children nodes are there on the root?
+  // (1) How many children nodes are there on the root? // 7
   // Replace `CASE_1_YOUR_ANSWER` in `trie_answer.h` with the correct answer.
   if (CASE_1_YOUR_ANSWER != Case1CorrectAnswer()) {
     ASSERT_TRUE(false);
