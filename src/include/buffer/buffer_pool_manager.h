@@ -208,5 +208,6 @@ class BufferPoolManager {
   }
 
   // TODO(student): You may add additional private members and helper functions
+  auto FindFrameSlotHepler(frame_id_t *frame_id) -> bool;
 };
 }  // namespace bustub
