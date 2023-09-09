@@ -1,10 +1,12 @@
 #include <sstream>
 #include <string>
 
+#include "common/config.h"
 #include "common/exception.h"
 #include "common/logger.h"
 #include "common/rid.h"
 #include "storage/index/b_plus_tree.h"
+#include "storage/page/page_guard.h"
 
 namespace bustub {
 
@@ -39,8 +41,98 @@ auto BPLUSTREE_TYPE::IsEmpty() const -> bool { return true; }
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *txn) -> bool {
   // Declaration of context instance.
+  if(header_page_id_ == INVALID_PAGE_ID){
+    return false;
+  }
+  
   Context ctx;
-  (void)ctx;
+  ctx.root_page_id_ = header_page_id_;
+  ReadPageGuard guard = bpm_->FetchPageRead(header_page_id_);
+  ctx.read_set_.push_back(guard);
+
+  auto head = guard.As<BPlusTreePage>();
+  while(!head->IsLeafPage()){
+    int size = head->GetSize();
+
+    auto* inner_page = reinterpret_cast<const InternalPage *>(head);
+    page_id_t next_page_id = FindNextPage(key, inner_page, 0, size);
+    guard = bpm_->FetchPageRead(next_page_id);
+    ctx.read_set_.push_back(guard);
+
+    head = guard.As<BPlusTreePage>();
+  }
+
+  int size = head->GetSize();
+  auto* leaf_page = reinterpret_cast<const LeafPage *>(head);
+
+  return FindValueType(key, leaf_page, 0, size, result);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+page_id_t BPLUSTREE_TYPE::FindNextPage(const KeyType &key, const InternalPage *inner_page, int left, int right){
+  int mid = 0;
+  while(left < right){
+    mid = left + (right-left)/2;
+    int compare = comparator_(key, inner_page->KeyAt(mid));
+    if(compare < 0){
+      left = mid+1;
+    }else if(compare > 0){
+      right = mid-1;
+    }else{
+      break;
+    }
+  }
+
+  mid = left + (right-left)/2;
+  int compare = comparator_(key, inner_page->KeyAt(mid));
+  if(compare < 0){
+    return inner_page->ValueAt(mid-1);
+  }
+
+  return inner_page->ValueAt(mid);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+bool BPLUSTREE_TYPE::FindValueType(const KeyType &key, const LeafPage *leaf_page, int left, int right, std::vector<ValueType> *result){
+  int mid = 0;
+  int left_bound = left;
+  int right_bound = right;
+  while(left <= right){
+    mid = left + (right-left)/2;
+    int compare = comparator_(key, leaf_page->KeyAt(mid));
+    if(compare < 0){
+      left = mid+1;
+    }else if(compare > 0){
+      right = mid-1;
+    }else{
+      result->push_back(leaf_page->ValueAt(mid));
+
+      // continue to find left same key
+      // int cur = mid-1;
+      // while(cur >= left_bound){
+      //   compare = comparator_(key, leaf_page->KeyAt(cur));
+      //   if(compare != 0){
+      //     break;
+      //   }
+      //   result->push_back(leaf_page->ValueAt(cur));
+      //   cur--;
+      // }
+
+      // continue to find right same key
+      // cur = mid+1;
+      // while(cur <= right_bound){
+      //   compare = comparator_(key, leaf_page->KeyAt(cur));
+      //   if(compare != 0){
+      //     break;
+      //   }
+      //   result->push_back(leaf_page->ValueAt(cur));
+      //   cur++;
+      // }
+
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -57,8 +149,15 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *txn) -> bool {
   // Declaration of context instance.
+  if(header_page_id_ == INVALID_PAGE_ID){
+    if((bpm_->NewPage(&header_page_id_)) == nullptr){
+      return false;
+    }
+  }
   Context ctx;
-  (void)ctx;
+
+  WritePageGuard guard = bpm_->FetchPageWrite(page_id_t page_id)
+
   return false;
 }
 

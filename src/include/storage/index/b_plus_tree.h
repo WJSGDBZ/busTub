@@ -133,6 +133,10 @@ class BPlusTree {
 
   void PrintTree(page_id_t page_id, const BPlusTreePage *page);
 
+  page_id_t FindNextPage(const KeyType &key, const InternalPage *inner_page, int left, int right);
+
+  bool FindValueType(const KeyType &key, const LeafPage *leaf_page, int left, int right, std::vector<ValueType> *result);
+
   /**
    * @brief Convert A B+ tree into a Printable B+ tree
    *

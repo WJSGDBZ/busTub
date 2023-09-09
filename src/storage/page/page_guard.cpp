@@ -1,7 +1,7 @@
 #include "storage/page/page_guard.h"
 #include "buffer/buffer_pool_manager.h"
 
-static const bool DEBUG = true;
+static const bool DEBUG = false;
 namespace bustub {
 
 BasicPageGuard::BasicPageGuard(BasicPageGuard &&that) noexcept

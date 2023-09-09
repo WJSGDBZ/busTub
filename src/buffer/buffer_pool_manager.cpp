@@ -16,7 +16,7 @@
 #include "common/macros.h"
 #include "storage/page/page_guard.h"
 
-static const bool DEBUG = true;
+static const bool DEBUG = false;
 namespace bustub {
 
 BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager, size_t replacer_k,
@@ -45,6 +45,7 @@ BufferPoolManager::~BufferPoolManager() { delete[] pages_; }
 
 auto BufferPoolManager::FindFrameSlotHepler(frame_id_t *frame_id) -> bool {
   // try to get available frame slot
+  
   bool validate = false;
   if (!free_list_.empty()) {
     *frame_id = free_list_.front();
