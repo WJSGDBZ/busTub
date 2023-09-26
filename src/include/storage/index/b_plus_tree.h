@@ -72,17 +72,40 @@ class BPlusTree {
   // Returns true if this B+ tree has no keys and values.
   auto IsEmpty() const -> bool;
 
-  // Insert a key-value pair into this B+ tree.
-  auto Insert(const KeyType &key, const ValueType &value, Transaction *txn = nullptr) -> bool;
-
-  // Remove a key and its value from this B+ tree.
-  void Remove(const KeyType &key, Transaction *txn);
+  // Return the page id of the root node
+  auto GetRootPageId() -> page_id_t;
 
   // Return the value associated with a given key
   auto GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *txn = nullptr) -> bool;
 
-  // Return the page id of the root node
-  auto GetRootPageId() -> page_id_t;
+  auto FindNextPage(const KeyType &key, const InternalPage *inner_page, int left, int right, page_id_t *next) -> int;
+
+  auto FindValueType(const KeyType &key, const LeafPage *leaf_page, int left, int right, std::vector<ValueType> *result)
+      -> bool;
+
+  auto FindKeyIndex(const KeyType &key, const LeafPage *leaf_page, int left, int right, int *index) -> bool;
+
+  // Insert a key-value pair into this B+ tree.
+  auto Insert(const KeyType &key, const ValueType &value, Transaction *txn = nullptr) -> bool;
+
+  auto Insert(page_id_t root_page_id, const KeyType &key, const ValueType &value, Transaction *txn, Context &context)
+      -> bool;
+
+  auto SplitRightSidePage(WritePageGuard *full_page_guard, page_id_t *new_page_id, KeyType *key) -> bool;
+
+  auto TrySplitFullPage(page_id_t root_page_id, WritePageGuard *guard, Context &context) -> bool;
+
+  // Remove a key and its value from this B+ tree.
+  void Remove(const KeyType &key, Transaction *txn);
+
+  void Remove(page_id_t root_page_id, const KeyType &key, Transaction *txn, Context &context, int index);
+
+  auto TryMergePage(page_id_t root_page_id, WritePageGuard *guard, Context &context, int index) -> bool;
+
+  auto MergeRightSidePage(WritePageGuard *guard, WritePageGuard *bro_guard, WritePageGuard *parent_guard, int index,
+                          page_id_t bro_page_id) -> bool;
+
+  auto Redistribute(WritePageGuard *guard, WritePageGuard *bro_guard, WritePageGuard *parent_guard, int index) -> bool;
 
   // Index iterator
   auto Begin() -> INDEXITERATOR_TYPE;
@@ -132,10 +155,6 @@ class BPlusTree {
   void ToGraph(page_id_t page_id, const BPlusTreePage *page, std::ofstream &out);
 
   void PrintTree(page_id_t page_id, const BPlusTreePage *page);
-
-  page_id_t FindNextPage(const KeyType &key, const InternalPage *inner_page, int left, int right);
-
-  bool FindValueType(const KeyType &key, const LeafPage *leaf_page, int left, int right, std::vector<ValueType> *result);
 
   /**
    * @brief Convert A B+ tree into a Printable B+ tree

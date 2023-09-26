@@ -60,6 +60,8 @@ class BPlusTreeInternalPage : public BPlusTreePage {
    */
   void SetKeyAt(int index, const KeyType &key);
 
+  void SetKeyValueAt(int index, const KeyType &key, const ValueType &value);
+
   /**
    * @param value The value to search for
    * @return The index that corresponds to the specified value
@@ -72,6 +74,17 @@ class BPlusTreeInternalPage : public BPlusTreePage {
    */
   auto ValueAt(int index) const -> ValueType;
 
+  auto Insert(const KeyType &key, const ValueType &value, KeyComparator &comparator_) -> bool;
+  void SetValueAt(int index, const ValueType &value);
+  auto Split(BPlusTreeInternalPage *new_page, KeyType *key, KeyComparator &comparator_) -> bool;
+  auto Remove(int index) -> bool;
+  auto PopBack() -> MappingType;
+  auto PopFront() -> MappingType;
+  auto Merge(BPlusTreeInternalPage *new_page, KeyComparator &comparator_) -> bool;
+  auto MoveOn() -> bool;
+  auto IsStealable() -> bool;
+  auto IsInsertionSafty() -> bool;
+  auto IsDeletionSafty() -> bool;
   /**
    * @brief For test only, return a string representing all keys in
    * this internal page, formatted as "(key1,key2,key3,...)"
@@ -83,7 +96,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
     bool first = true;
 
     // First key of internal page is always invalid
-    for (int i = 1; i < GetSize(); i++) {
+    for (int i = 0; i < GetSize(); i++) {
       KeyType key = KeyAt(i);
       if (first) {
         first = false;

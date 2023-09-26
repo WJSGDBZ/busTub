@@ -83,6 +83,8 @@ auto WritePageGuard::operator=(WritePageGuard &&that) noexcept -> WritePageGuard
   return *this;
 }
 
+auto WritePageGuard::IsValid() -> bool { return guard_.IsValid(); }
+
 void WritePageGuard::Drop() {
   if (guard_.IsValid()) {
     Page *tmp = guard_.page_;

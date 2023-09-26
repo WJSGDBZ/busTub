@@ -45,7 +45,7 @@ BufferPoolManager::~BufferPoolManager() { delete[] pages_; }
 
 auto BufferPoolManager::FindFrameSlotHepler(frame_id_t *frame_id) -> bool {
   // try to get available frame slot
-  
+
   bool validate = false;
   if (!free_list_.empty()) {
     *frame_id = free_list_.front();
@@ -226,7 +226,7 @@ auto BufferPoolManager::FetchPageBasic(page_id_t page_id) -> BasicPageGuard {
     return {this, page};
   }
 
-  return {this, nullptr};
+  return {nullptr, nullptr};
 }
 
 auto BufferPoolManager::FetchPageRead(page_id_t page_id) -> ReadPageGuard {
@@ -237,7 +237,7 @@ auto BufferPoolManager::FetchPageRead(page_id_t page_id) -> ReadPageGuard {
     return {this, page};
   }
 
-  return {this, nullptr};
+  return {nullptr, nullptr};
 }
 
 auto BufferPoolManager::FetchPageWrite(page_id_t page_id) -> WritePageGuard {
@@ -248,7 +248,7 @@ auto BufferPoolManager::FetchPageWrite(page_id_t page_id) -> WritePageGuard {
     return {this, page};
   }
 
-  return {this, nullptr};
+  return {nullptr, nullptr};
 }
 
 auto BufferPoolManager::NewPageGuarded(page_id_t *page_id) -> BasicPageGuard {
@@ -257,6 +257,6 @@ auto BufferPoolManager::NewPageGuarded(page_id_t *page_id) -> BasicPageGuard {
     return {this, page};
   }
 
-  return {this, nullptr};
+  return {nullptr, nullptr};
 }
 }  // namespace bustub

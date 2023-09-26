@@ -27,7 +27,7 @@ using bustub::DiskManagerUnlimitedMemory;
 /**
  * This test should be passing with your Checkpoint 1 submission.
  */
-TEST(BPlusTreeTests, DISABLED_ScaleTest) {  // NOLINT
+TEST(BPlusTreeTests, ScaleTest) {  // NOLINT
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -41,13 +41,13 @@ TEST(BPlusTreeTests, DISABLED_ScaleTest) {  // NOLINT
   (void)header_page;
 
   // create b+ tree
-  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", page_id, bpm, comparator, 2, 3);
+  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", page_id, bpm, comparator, 5, 8);
   GenericKey<8> index_key;
   RID rid;
   // create transaction
   auto *transaction = new Transaction(0);
 
-  int64_t scale = 5000;
+  int64_t scale = 8000;
   std::vector<int64_t> keys;
   for (int64_t key = 1; key < scale; key++) {
     keys.push_back(key);
@@ -56,11 +56,14 @@ TEST(BPlusTreeTests, DISABLED_ScaleTest) {  // NOLINT
   // randomized the insertion order
   auto rng = std::default_random_engine{};
   std::shuffle(keys.begin(), keys.end(), rng);
+  // int i = 0;
   for (auto key : keys) {
     int64_t value = key & 0xFFFFFFFF;
     rid.Set(static_cast<int32_t>(key >> 32), value);
     index_key.SetFromInteger(key);
+    // std::cout<<"insert " << i++ << " " << key << std::endl;
     tree.Insert(index_key, rid, transaction);
+    // tree.Print(bpm);
   }
   std::vector<RID> rids;
   for (auto key : keys) {

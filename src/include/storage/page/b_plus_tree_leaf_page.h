@@ -56,6 +56,16 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
   auto ValueAt(int index) const -> ValueType;
+  auto KeyValueAt(int index) const -> const MappingType &;
+  void SetKeyValueAt(int index, const KeyType &key, const ValueType &value);
+  auto Insert(const KeyType &key, const ValueType &value, KeyComparator &comparator_) -> bool;
+  auto Remove(const KeyType &key, KeyComparator &comparator_) -> bool;
+  auto PopBack() -> MappingType;
+  auto PopFront() -> MappingType;
+  auto Split(BPlusTreeLeafPage *new_page, KeyType *key, KeyComparator &comparator_) -> bool;
+  auto Merge(BPlusTreeLeafPage *new_page, KeyComparator &comparator_) -> bool;
+  auto IsStealable() -> bool;
+
   /**
    * @brief For test only return a string representing all keys in
    * this leaf page formatted as "(key1,key2,key3,...)"

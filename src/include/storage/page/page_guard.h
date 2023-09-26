@@ -186,6 +186,8 @@ class WritePageGuard {
    */
   void Drop();
 
+  auto IsValid() -> bool;
+
   /** TODO(P1): Add implementation
    *
    * @brief Destructor for WritePageGuard
