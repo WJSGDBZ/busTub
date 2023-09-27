@@ -73,18 +73,21 @@ TEST(BPlusTreeTests, InsertTest2) {
   page_id_t page_id;
   auto header_page = bpm->NewPage(&page_id);
   // create b+ tree
-  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", header_page->GetPageId(), bpm, comparator, 2, 3);
+  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", header_page->GetPageId(), bpm, comparator, 2, 10);
   GenericKey<8> index_key;
   RID rid;
   // create transaction
   auto *transaction = new Transaction(0);
 
-  std::vector<int64_t> keys = {1, 2, 3, 4, 5};
+  std::vector<int64_t> keys = {0, 1, 2, 3, 4};
+  // std::vector<int64_t> keys = {1, 2, 3, 4, 5};
   for (auto key : keys) {
     int64_t value = key & 0xFFFFFFFF;
     rid.Set(static_cast<int32_t>(key >> 32), value);
     index_key.SetFromInteger(key);
     tree.Insert(index_key, rid, transaction);
+    std::cout << "insert " << key << std::endl;
+    std::cout << tree.DrawBPlusTree();
   }
 
   std::vector<RID> rids;

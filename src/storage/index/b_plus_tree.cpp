@@ -14,6 +14,8 @@
 
 namespace bustub {
 
+const bool DEBUG = false;
+
 INDEX_TEMPLATE_ARGUMENTS
 BPLUSTREE_TYPE::BPlusTree(std::string name, page_id_t header_page_id, BufferPoolManager *buffer_pool_manager,
                           const KeyComparator &comparator, int leaf_max_size, int internal_max_size)
@@ -26,6 +28,9 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, page_id_t header_page_id, BufferPool
   WritePageGuard guard = bpm_->FetchPageWrite(header_page_id_);
   auto root_page = guard.AsMut<BPlusTreeHeaderPage>();
   root_page->root_page_id_ = INVALID_PAGE_ID;
+  if (DEBUG) {
+    std::cout << "leaf_max_size = " << leaf_max_size << ", internal_max_size = " << internal_max_size << std::endl;
+  }
 }
 
 /*
@@ -51,7 +56,9 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   if (root_page->root_page_id_ == INVALID_PAGE_ID) {
     return false;
   }
-
+  if (DEBUG) {
+    std::cout << "GetValue " << key << std::endl;
+  }
   Context ctx;
   // ctx.root_page_id_ = root_page_id;
   ReadPageGuard guard = bpm_->FetchPageRead(root_page->root_page_id_);
@@ -73,6 +80,7 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   return FindValueType(key, leaf_page, 0, head->GetSize() - 1, result);
 }
 
+// @Return index of value
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::FindNextPage(const KeyType &key, const InternalPage *inner_page, int left, int right,
                                   page_id_t *next) -> int {
@@ -93,12 +101,12 @@ auto BPLUSTREE_TYPE::FindNextPage(const KeyType &key, const InternalPage *inner_
   mid = left + (right - left) / 2;
   int compare = comparator_(key, inner_page->KeyAt(mid));
   if (compare < 0) {
-    *next = inner_page->ValueAt(mid - 1);
-    return mid - 1;
+    *next = inner_page->ValueAt(mid);
+    return mid;
   }
 
-  *next = inner_page->ValueAt(mid);
-  return mid;
+  *next = inner_page->ValueAt(mid + 1);
+  return mid + 1;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -193,13 +201,15 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
 
     root_guard.Drop();
     head_guard.Drop();
-    Insert(key, value, txn);
+    return Insert(key, value, txn);
   }
 
   Context ctx;
   ctx.root_page_id_ = head_page->root_page_id_;
   ctx.header_page_ = std::move(head_guard);
-
+  if (DEBUG) {
+    std::cout << "Insert " << key << std::endl;
+  }
   return Insert(head_page->root_page_id_, key, value, txn, ctx);
 }
 
@@ -238,8 +248,8 @@ auto BPLUSTREE_TYPE::Insert(page_id_t root_page_id, const KeyType &key, const Va
 
   // check if need to split
   if (root_page != nullptr && root_page->NeedsSpliting()) {
-    BUSTUB_ASSERT(TrySplitFullPage(root_page_id, &guard, context),
-                  "error in BPlusTree Split, please allocate more space on bufferpool");
+    bool done = TrySplitFullPage(root_page_id, &guard, context);
+    BUSTUB_ASSERT(done, "error in BPlusTree Split, please allocate more space on bufferpool");
   }
 
   return valid;
@@ -264,7 +274,7 @@ auto BPLUSTREE_TYPE::TrySplitFullPage(page_id_t root_page_id, WritePageGuard *gu
         new_page->Init(internal_max_size_);
 
         new_page->Insert(first_key, right_page_id, comparator_);
-        new_page->SetValueAt(-1, root_page_id);
+        new_page->SetValueAt(0, root_page_id);
 
         context.header_page_->AsMut<BPlusTreeHeaderPage>()->root_page_id_ = new_root_id;
         valid = true;
@@ -343,7 +353,9 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
   Context ctx;
   ctx.root_page_id_ = head_page->root_page_id_;
   ctx.header_page_ = std::move(head_guard);
-
+  if (DEBUG) {
+    std::cout << "Remove " << key << std::endl;
+  }
   Remove(head_page->root_page_id_, key, txn, ctx, -1);
 
   ctx.header_page_ = std::nullopt;
@@ -383,8 +395,8 @@ void BPLUSTREE_TYPE::Remove(page_id_t root_page_id, const KeyType &key, Transact
 
   // check if need to merge
   if (root_page != nullptr && root_page->NeedsMerging()) {
-    BUSTUB_ASSERT(TryMergePage(root_page_id, &guard, context, parent_index),
-                  "error in BPlusTree Merge, please allocate more space on bufferpool");
+    bool done = TryMergePage(root_page_id, &guard, context, parent_index);
+    BUSTUB_ASSERT(done, "error in BPlusTree Merge, please allocate more space on bufferpool");
   }
 }
 
@@ -402,7 +414,7 @@ auto BPLUSTREE_TYPE::TryMergePage(page_id_t root_page_id, WritePageGuard *guard,
     auto *root_page = guard->AsMut<BPlusTreePage>();
     if (!root_page->IsLeafPage() && root_page->GetSize() == 0) {
       auto *inner_page = guard->AsMut<InternalPage>();
-      page_id_t new_root_id = inner_page->ValueAt(-1);
+      page_id_t new_root_id = inner_page->ValueAt(0);
       context.header_page_->AsMut<BPlusTreeHeaderPage>()->root_page_id_ = new_root_id;
       context.root_page_id_ = new_root_id;
 
@@ -417,15 +429,14 @@ auto BPLUSTREE_TYPE::TryMergePage(page_id_t root_page_id, WritePageGuard *guard,
     auto *parent_page = parent_guard.AsMut<InternalPage>();
 
     page_id_t bro_page_id = INVALID_PAGE_ID;
-    if (parent_index + 1 == parent_page->GetSize()) {
-      BUSTUB_ASSERT(parent_index != -1, "TryMergePage index should not be -1");
+    if (parent_index == parent_page->GetSize()) {
       bro_page_id = parent_page->ValueAt(parent_index - 1);
       WritePageGuard bro_guard = bpm_->FetchPageWrite(bro_page_id);
-      valid = MergeRightSidePage(&bro_guard, guard, &parent_guard, parent_index, bro_page_id);
+      valid = MergeRightSidePage(&bro_guard, guard, &parent_guard, parent_index - 1, bro_page_id);
     } else {
       bro_page_id = parent_page->ValueAt(parent_index + 1);
       WritePageGuard bro_guard = bpm_->FetchPageWrite(bro_page_id);
-      valid = MergeRightSidePage(guard, &bro_guard, &parent_guard, parent_index + 1, bro_page_id);
+      valid = MergeRightSidePage(guard, &bro_guard, &parent_guard, parent_index, bro_page_id);
     }
 
     context.write_set_.push_back(std::move(parent_guard));
@@ -455,7 +466,7 @@ auto BPLUSTREE_TYPE::MergeRightSidePage(WritePageGuard *guard, WritePageGuard *b
       auto *page = guard->AsMut<InternalPage>();
       auto *bro_page = bro_guard->AsMut<InternalPage>();
 
-      page->Insert(parent_page->KeyAt(index), bro_page->ValueAt(-1), comparator_);
+      page->Insert(parent_page->KeyAt(index), bro_page->ValueAt(0), comparator_);
       parent_page->Remove(index);
       page->Merge(bro_page, comparator_);
 
@@ -496,16 +507,16 @@ auto BPLUSTREE_TYPE::Redistribute(WritePageGuard *guard, WritePageGuard *bro_gua
     auto *bro_page = bro_guard->AsMut<InternalPage>();
     if (page->GetSize() < bro_page->GetSize() && bro_page->IsStealable()) {
       KeyType key = parent_page->KeyAt(index);
-      page->Insert(key, bro_page->ValueAt(-1), comparator_);
+      page->Insert(key, bro_page->ValueAt(0), comparator_);
       parent_page->SetKeyAt(index, bro_page->KeyAt(0));
       bro_page->MoveOn();
 
       valid = true;
     } else if (page->GetSize() > bro_page->GetSize() && page->IsStealable()) {
       KeyType key = parent_page->KeyAt(index);
-      bro_page->Insert(key, bro_page->ValueAt(-1), comparator_);
+      bro_page->Insert(key, bro_page->ValueAt(0), comparator_);
       parent_page->SetKeyAt(index, page->KeyAt(page->GetSize() - 1));
-      bro_page->SetValueAt(-1, page->ValueAt(page->GetSize() - 1));
+      bro_page->SetValueAt(0, page->ValueAt(page->GetSize()));
       page->PopBack();
 
       valid = true;
@@ -537,7 +548,7 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
   while (!left_most_guard.As<BPlusTreePage>()->IsLeafPage()) {
     auto *inner_page = left_most_guard.As<InternalPage>();
 
-    left_most_page_id = inner_page->ValueAt(-1);
+    left_most_page_id = inner_page->ValueAt(0);
     left_most_guard = bpm_->FetchPageRead(left_most_page_id);
   }
 
@@ -688,18 +699,15 @@ void BPLUSTREE_TYPE::PrintTree(page_id_t page_id, const BPlusTreePage *page) {
 
     // Print the contents of the internal page.
     std::cout << "Contents: ";
-    std::cout << internal->ValueAt(-1) << " : ";
     for (int i = 0; i < internal->GetSize(); i++) {
-      std::cout << "(" << internal->KeyAt(i) << ")"
-                << " : " << internal->ValueAt(i);
+      std::cout << internal->KeyAt(i) << ": " << internal->ValueAt(i);
       if ((i + 1) < internal->GetSize()) {
         std::cout << ", ";
       }
     }
     std::cout << std::endl;
     std::cout << std::endl;
-
-    for (int i = -1; i < internal->GetSize(); i++) {
+    for (int i = 0; i <= internal->GetSize(); i++) {
       auto guard = bpm_->FetchPageBasic(internal->ValueAt(i));
       PrintTree(guard.PageId(), guard.template As<BPlusTreePage>());
     }
@@ -837,7 +845,7 @@ auto BPLUSTREE_TYPE::ToPrintableBPlusTree(page_id_t root_id) -> PrintableBPlusTr
   auto internal_page = root_page_guard.template As<InternalPage>();
   proot.keys_ = internal_page->ToString();
   proot.size_ = 0;
-  for (int i = -1; i < internal_page->GetSize(); i++) {
+  for (int i = 0; i <= internal_page->GetSize(); i++) {
     page_id_t child_id = internal_page->ValueAt(i);
     PrintableBPlusTree child_node = ToPrintableBPlusTree(child_id);
     proot.size_ += child_node.size_;

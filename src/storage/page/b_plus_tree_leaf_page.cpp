@@ -132,8 +132,6 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::Merge(BPlusTreeLeafPage *new_page, KeyComparato
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value, KeyComparator &comparator_)
     -> bool {
-  BUSTUB_ENSURE(GetSize() < GetMaxSize(), "LeafPage Insert out of bound");
-
   for (int i = 0; i < GetSize(); i++) {
     int compare = comparator_(key, array_[i].first);
     if (compare == 0) {
@@ -144,6 +142,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &val
     }
   }
 
+  BUSTUB_ENSURE(GetSize() < GetMaxSize(), "LeafPage Insert out of bound");
   int len = GetSize();
   array_[len] = std::make_pair(key, value);
   for (int i = len; i >= 1; i--) {

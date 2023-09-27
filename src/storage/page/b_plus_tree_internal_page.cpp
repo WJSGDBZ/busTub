@@ -65,9 +65,9 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyValueAt(int index, const KeyType &key
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const -> ValueType {
-  BUSTUB_ENSURE(index < GetSize(), "InternalPage ValueAt index out of bound");
+  BUSTUB_ENSURE(index <= GetSize(), "InternalPage ValueAt index out of bound");
 
-  return array_[index + 1].second;
+  return array_[index].second;
 }
 
 /*
@@ -100,10 +100,10 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Insert(const KeyType &key, const ValueType 
 
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetValueAt(int index, const ValueType &value) {
-  BUSTUB_ENSURE(index < GetSize(), "InternalPage SetValueAt index out of bound");
+  BUSTUB_ENSURE(index <= GetSize(), "InternalPage SetValueAt index out of bound");
 
-  auto key = array_[index + 1].first;
-  array_[index + 1] = std::make_pair(key, value);
+  auto key = array_[index].first;
+  array_[index] = std::make_pair(key, value);
 }
 
 /*
@@ -122,7 +122,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Split(BPlusTreeInternalPage *new_page, KeyT
     new_page->Insert(data.first, data.second, comparator_);
   }
   MappingType data = PopBack();
-  new_page->SetValueAt(-1, data.second);
+  new_page->SetValueAt(0, data.second);
 
   return true;
 }
@@ -181,7 +181,7 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveOn() -> bool {
   BUSTUB_ENSURE(GetSize() != 0, "can't move on empty page");
 
-  SetValueAt(-1, array_[1].second);
+  SetValueAt(0, array_[1].second);
   IncreaseSize(-1);
   for (int i = 0; i < GetSize(); i++) {
     std::swap(array_[i + 1], array_[i + 2]);
