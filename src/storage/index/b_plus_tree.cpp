@@ -37,7 +37,12 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, page_id_t header_page_id, BufferPool
  * Helper function to decide whether current b+tree is empty
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::IsEmpty() const -> bool { return false; }
+auto BPLUSTREE_TYPE::IsEmpty() const -> bool {
+  ReadPageGuard head_guard = bpm_->FetchPageRead(header_page_id_);
+  const auto *root_page = head_guard.As<BPlusTreeHeaderPage>();
+
+  return root_page->root_page_id_ != INVALID_PAGE_ID;
+}
 
 /*****************************************************************************
  * SEARCH
@@ -65,6 +70,10 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   // ctx.read_set_.push_back(guard);
 
   const auto *head = guard.As<BPlusTreePage>();
+  if (head->GetSize() == 0) {
+    return false;
+  }
+
   page_id_t next_page_id = INVALID_PAGE_ID;
   while (!head->IsLeafPage()) {
     auto *inner_page = guard.As<InternalPage>();
@@ -539,12 +548,16 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
   ReadPageGuard head_guard = bpm_->FetchPageRead(header_page_id_);
   const auto *root_page = head_guard.As<BPlusTreeHeaderPage>();
 
-  if (root_page->root_page_id_ == INVALID_PAGE_ID) {
+  if (root_page->root_page_id_ == INVALID_PAGE_ID) {  // non-initial tree
     return End();
   }
 
   ReadPageGuard left_most_guard = bpm_->FetchPageRead(root_page->root_page_id_);
   page_id_t left_most_page_id = root_page->root_page_id_;
+  if (left_most_guard.As<BPlusTreePage>()->GetSize() == 0) {  // empty tree
+    return End();
+  }
+
   while (!left_most_guard.As<BPlusTreePage>()->IsLeafPage()) {
     auto *inner_page = left_most_guard.As<InternalPage>();
 
@@ -572,6 +585,10 @@ auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
   ReadPageGuard guard = bpm_->FetchPageRead(root_page->root_page_id_);
   page_id_t next_page_id = root_page->root_page_id_;
   const auto *head = guard.As<BPlusTreePage>();
+  if (head->GetSize() == 0) {
+    return End();
+  }
+
   while (!head->IsLeafPage()) {
     auto *inner_page = guard.As<InternalPage>();
     FindNextPage(key, inner_page, 0, head->GetSize() - 1, &next_page_id);

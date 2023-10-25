@@ -39,6 +39,20 @@ class TableIterator {
 
   ~TableIterator() = default;
 
+  //   TableIterator& operator = (TableIterator &&other) noexcept {
+  //     if (this == &other) {
+  //         return *this;
+  //     }
+
+  //     table_heap_ = other.table_heap_;
+  //     other.table_heap_ = nullptr;
+
+  //     rid_ = other.rid_;
+  //     stop_at_rid_ = other.stop_at_rid_;
+
+  //     return *this;
+  // }
+
   auto GetTuple() -> std::pair<TupleMeta, Tuple>;
 
   auto GetRID() -> RID;

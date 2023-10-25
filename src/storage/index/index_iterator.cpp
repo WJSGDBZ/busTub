@@ -31,14 +31,7 @@ INDEXITERATOR_TYPE::IndexIterator(BufferPoolManager *bpm, page_id_t current_page
       current_index_(current_index) {}
 
 INDEX_TEMPLATE_ARGUMENTS
-auto INDEXITERATOR_TYPE::IsEnd() -> bool {
-  const auto *page = current_page_.As<BPlusTreePage>();
-  BUSTUB_ASSERT(page->IsLeafPage(), "iterator only iterate LeafPage");
-
-  const auto *leaf_page = current_page_.As<LeafPage>();
-
-  return current_index_ + 1 == page->GetSize() && leaf_page->GetNextPageId() == INVALID_PAGE_ID;
-}
+auto INDEXITERATOR_TYPE::IsEnd() -> bool { return current_page_id_ == INVALID_PAGE_ID && current_index_ == 0; }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::operator*() -> const MappingType & {
@@ -56,20 +49,20 @@ auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & {
   BUSTUB_ASSERT(page->IsLeafPage(), "iterator only iterate LeafPage");
   BUSTUB_ASSERT(current_page_id_ != INVALID_PAGE_ID, "Iterator already reach end");
 
-  if (IsEnd()) {
-    current_page_id_ = INVALID_PAGE_ID;
+  const auto *leaf_page = current_page_.As<LeafPage>();
+  if (current_index_ + 1 == page->GetSize() && leaf_page->GetNextPageId() != INVALID_PAGE_ID) {
+    page_id_t next_page_id = leaf_page->GetNextPageId();
+
+    current_page_id_ = next_page_id;
+    current_page_ = bpm_->FetchPageRead(next_page_id);
     current_index_ = 0;
   } else {
-    const auto *leaf_page = current_page_.As<LeafPage>();
-    if (current_index_ + 1 == page->GetSize()) {
-      page_id_t next_page_id = leaf_page->GetNextPageId();
+    current_index_++;
+  }
 
-      current_page_id_ = next_page_id;
-      current_page_ = bpm_->FetchPageRead(next_page_id);
-      current_index_ = 0;
-    } else {
-      current_index_++;
-    }
+  if (current_index_ == page->GetSize() && leaf_page->GetNextPageId() == INVALID_PAGE_ID) {
+    current_page_id_ = INVALID_PAGE_ID;
+    current_index_ = 0;
   }
 
   return *this;

@@ -48,7 +48,7 @@ class IndexIterator {
   }
 
   auto operator!=(const IndexIterator &itr) const -> bool {
-    return itr.current_page_id_ != current_page_id_ || itr.current_index_ != current_index_;
+    return !(itr.current_page_id_ == current_page_id_ && itr.current_index_ == current_index_);
   }
 
  private:

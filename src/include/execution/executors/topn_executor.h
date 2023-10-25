@@ -58,10 +58,17 @@ class TopNExecutor : public AbstractExecutor {
   /** @return The size of top_entries_ container, which will be called on each child_executor->Next(). */
   auto GetNumInHeap() -> size_t;
 
+  auto Compare(const Tuple &top, const Tuple &cur,
+               const std::vector<std::pair<OrderByType, AbstractExpressionRef>> &order_by, size_t level) -> bool;
+
  private:
   /** The TopN plan node to be executed */
   const TopNPlanNode *plan_;
   /** The child executor from which tuples are obtained */
   std::unique_ptr<AbstractExecutor> child_executor_;
+
+  std::vector<std::pair<Tuple, RID>> top_n_;
+
+  size_t cnt_{0};
 };
 }  // namespace bustub
