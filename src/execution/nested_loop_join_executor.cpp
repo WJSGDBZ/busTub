@@ -39,17 +39,8 @@ void NestedLoopJoinExecutor::Init() {
   left_executor_->Init();
   right_executor_->Init();
 
-  while (true) {
-    Tuple right_tuple;
-    RID right_rid;
-
-    if (!right_executor_->Next(&right_tuple, &right_rid)) {
-      break;
-    }
-
-    right_tuple_.push_back(std::move(right_tuple));
-  }
-
+  left_tuple_.clear();
+  left_cursor_ = 0;
   while (true) {
     Tuple left_tuple;
     RID left_rid;
@@ -70,38 +61,41 @@ auto NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     std::vector<Value> values;
     size_t cnt = left_tuple_cnt + right_tuple_cnt;
     values.reserve(cnt);
-    while (right_cursor_ < right_tuple_.size()) {
+    while (true) {
+      Tuple right_tuple;
+      RID right_rid;
+      if (!right_executor_->Next(&right_tuple, &right_rid)) {
+        break;
+      }
+
       auto match = plan_->Predicate()->EvaluateJoin(&left_tuple_[left_cursor_], left_executor_->GetOutputSchema(),
-                                                    &right_tuple_[right_cursor_], right_executor_->GetOutputSchema());
+                                                    &right_tuple, right_executor_->GetOutputSchema());
       if (!match.IsNull() && match.GetAs<bool>()) {
         // only combine matched
-        for (size_t i = 0; i < left_executor_->GetOutputSchema().GetColumnCount(); i++) {
+        for (size_t i = 0; i < left_tuple_cnt; i++) {
           values.emplace_back(left_tuple_[left_cursor_].GetValue(&left_executor_->GetOutputSchema(), i));
         }
-        for (size_t i = 0; i < right_executor_->GetOutputSchema().GetColumnCount(); i++) {
-          values.emplace_back(right_tuple_[right_cursor_].GetValue(&right_executor_->GetOutputSchema(), i));
+        for (size_t i = 0; i < right_tuple_cnt; i++) {
+          values.emplace_back(right_tuple.GetValue(&right_executor_->GetOutputSchema(), i));
         }
 
-        *tuple = {values, &join_schema};
-        right_cursor_++;
+        *tuple = {std::move(values), &join_schema};
         is_match_ = true;
         return true;
       }
-      right_cursor_++;
     }
 
-    right_cursor_ = 0;  // refresh
-    right_executor_->Init();
+    right_executor_->Init();  // refresh
     if (!is_match_ && plan_->GetJoinType() == JoinType::LEFT) {
       // others, fill right tuple NULL Value
-      for (size_t i = 0; i < left_executor_->GetOutputSchema().GetColumnCount(); i++) {
+      for (size_t i = 0; i < left_tuple_cnt; i++) {
         values.emplace_back(left_tuple_[left_cursor_].GetValue(&left_executor_->GetOutputSchema(), i));
       }
-      for (size_t i = 0; i < right_executor_->GetOutputSchema().GetColumnCount(); i++) {
+      for (size_t i = 0; i < right_tuple_cnt; i++) {
         values.emplace_back(
             ValueFactory::GetNullValueByType(right_executor_->GetOutputSchema().GetColumn(i).GetType()));
       }
-      *tuple = {values, &join_schema};
+      *tuple = {std::move(values), &join_schema};
       is_match_ = false;
       left_cursor_++;
       return true;

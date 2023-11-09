@@ -13,7 +13,8 @@ SortExecutor::SortExecutor(ExecutorContext *exec_ctx, const SortPlanNode *plan,
 
 void SortExecutor::Init() {
   child_executor_->Init();
-
+  sorted_tuples_info_.clear();
+  cnt_ = 0;
   while (true) {
     Tuple ch_tuple;
     RID ch_rid;
@@ -44,7 +45,7 @@ void SortExecutor::Init() {
 
 auto SortExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   if (cnt_ != sorted_tuples_info_.size()) {
-    *tuple = sorted_tuples_info_[cnt_].first;
+    *tuple = std::move(sorted_tuples_info_[cnt_].first);
     *rid = sorted_tuples_info_[cnt_].second;
 
     cnt_++;

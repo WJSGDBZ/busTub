@@ -13,8 +13,8 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 #include <vector>
-
 #include "catalog/catalog.h"
 #include "common/rid.h"
 #include "execution/executor_context.h"
@@ -54,5 +54,9 @@ class IndexScanExecutor : public AbstractExecutor {
   TableInfo *table_info_;
 
   BPlusTreeIndexIteratorForTwoIntegerColumn index_iterator_;
+
+  std::vector<std::pair<Tuple, RID>> tuple_info_;
+  size_t cnt_{0};
+  bool done_{false};
 };
 }  // namespace bustub

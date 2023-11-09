@@ -61,13 +61,9 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
 
   std::unique_ptr<AbstractExecutor> right_executor_;
 
-  std::vector<Tuple> right_tuple_;
-
   std::vector<Tuple> left_tuple_;
 
   size_t left_cursor_{0};
-
-  size_t right_cursor_{0};
 
   bool is_match_{false};
 };

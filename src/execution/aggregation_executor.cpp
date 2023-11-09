@@ -28,6 +28,8 @@ AggregationExecutor::AggregationExecutor(ExecutorContext *exec_ctx, const Aggreg
 
 void AggregationExecutor::Init() {
   child_executor_->Init();
+  aht_.Clear();
+  empty_table_ = false;
 
   while (true) {
     Tuple ch_tuple;
@@ -67,7 +69,7 @@ auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   }
   values.insert(values.end(), aht_iterator_.Val().aggregates_.begin(), aht_iterator_.Val().aggregates_.end());
 
-  *tuple = {values, &GetOutputSchema()};
+  *tuple = {std::move(values), &GetOutputSchema()};
 
   ++aht_iterator_;
   return true;

@@ -24,26 +24,34 @@ SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNod
       table_info_(exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid())),
       table_iterator_(table_info_->table_->MakeIterator()) {}
 
-void SeqScanExecutor::Init() {}
-
-auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+void SeqScanExecutor::Init() {
   const Schema schema = GetOutputSchema();
+  cnt_ = 0;
 
-  while (!table_iterator_.IsEnd()) {
+  while (!done_ && !table_iterator_.IsEnd()) {
     auto tuple_info = table_iterator_.GetTuple();
     if (tuple_info.first.is_deleted_) {
       ++table_iterator_;
       continue;
     }
 
-    *tuple = tuple_info.second;
-    *rid = table_iterator_.GetRID();
-
+    tuple_info_.emplace_back(std::move(tuple_info.second), table_iterator_.GetRID());
     ++table_iterator_;
-    return true;
   }
 
-  return false;
+  done_ = true;
+}
+
+auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+  if (cnt_ == tuple_info_.size()) {
+    return false;
+  }
+
+  *tuple = tuple_info_[cnt_].first;
+  *rid = tuple_info_[cnt_].second;
+  cnt_++;
+
+  return true;
 }
 
 }  // namespace bustub

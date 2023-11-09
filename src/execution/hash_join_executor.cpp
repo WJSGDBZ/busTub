@@ -35,6 +35,9 @@ void HashJoinExecutor::Init() {
   left_executor_->Init();
   right_executor_->Init();
 
+  ht_.clear();
+  tuples_.clear();
+  cnt_ = 0;
   while (true) {
     Tuple right_tuple;
     RID right_rid;
@@ -104,7 +107,7 @@ auto HashJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
         values.emplace_back(iter.GetValue(&right_executor_->GetOutputSchema(), i));
       }
 
-      tuples_.emplace_back(values, &join_schema);
+      tuples_.emplace_back(std::move(values), &join_schema);
     }
 
     *tuple = std::move(tuples_[cnt_++]);

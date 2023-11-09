@@ -14,6 +14,10 @@ TopNExecutor::TopNExecutor(ExecutorContext *exec_ctx, const TopNPlanNode *plan,
     : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(std::move(child_executor)) {}
 
 void TopNExecutor::Init() {
+  if (done_) {
+    cnt_ = 0;
+    return;
+  }
   child_executor_->Init();
 
   const auto &order_by = plan_->GetOrderBy();
@@ -94,6 +98,8 @@ void TopNExecutor::Init() {
                        }
                      });
   }
+
+  done_ = true;
 }
 
 auto TopNExecutor::Compare(const Tuple &top, const Tuple &cur,

@@ -55,12 +55,12 @@ auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     // update index
     std::vector<IndexInfo *> index_info = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
     for (auto *info : index_info) {
-      std::cout << std::endl;
-      std::cout << "update index" << info->name_ << std::endl;
+      // std::cout << std::endl;
+      // std::cout << "update index" << info->name_ << std::endl;
       Schema *schema = info->index_->GetKeySchema();
 
-      uint32_t num = schema->GetColumnCount();
-      std::cout << "schema count is " << num << std::endl;
+      // uint32_t num = schema->GetColumnCount();
+      // std::cout << "schema count is " << num << std::endl;
 
       info->index_->InsertEntry(ch_tuple.KeyFromTuple(table_info_->schema_, *schema, info->index_->GetKeyAttrs()),
                                 new_rid, exec_ctx_->GetTransaction());

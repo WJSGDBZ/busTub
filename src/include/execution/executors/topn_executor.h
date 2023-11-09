@@ -70,5 +70,7 @@ class TopNExecutor : public AbstractExecutor {
   std::vector<std::pair<Tuple, RID>> top_n_;
 
   size_t cnt_{0};
+
+  bool done_{false};
 };
 }  // namespace bustub

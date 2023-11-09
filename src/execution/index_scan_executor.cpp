@@ -21,27 +21,37 @@ IndexScanExecutor::IndexScanExecutor(ExecutorContext *exec_ctx, const IndexScanP
       index_iterator_(
           dynamic_cast<BPlusTreeIndexForTwoIntegerColumn *>(index_info_->index_.get())->GetBeginIterator()) {}
 
-void IndexScanExecutor::Init() {}
+void IndexScanExecutor::Init() {
+  cnt_ = 0;
 
-auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
-  while (!index_iterator_.IsEnd()) {
+  while (!done_ && !index_iterator_.IsEnd()) {
     // get rid by index
-    *rid = (*index_iterator_).second;
+    RID rid = (*index_iterator_).second;
 
     // get tuple by rid
-    auto tuple_info = table_info_->table_->GetTuple(*rid);
+    auto tuple_info = table_info_->table_->GetTuple(rid);
     if (tuple_info.first.is_deleted_) {
       ++index_iterator_;
       continue;
     }
 
-    *tuple = tuple_info.second;
-
+    tuple_info_.emplace_back(std::move(tuple_info.second), rid);
     ++index_iterator_;
-    return true;
   }
 
-  return false;
+  done_ = true;
+}
+
+auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+  if (cnt_ == tuple_info_.size()) {
+    return false;
+  }
+
+  *tuple = tuple_info_[cnt_].first;
+  *rid = tuple_info_[cnt_].second;
+  cnt_++;
+
+  return true;
 }
 
 }  // namespace bustub
