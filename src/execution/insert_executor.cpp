@@ -18,6 +18,7 @@
 #include "common/config.h"
 #include "common/macros.h"
 #include "common/rid.h"
+#include "concurrency/lock_manager.h"
 #include "concurrency/transaction.h"
 #include "execution/executors/insert_executor.h"
 #include "storage/table/tuple.h"
@@ -30,9 +31,15 @@ InsertExecutor::InsertExecutor(ExecutorContext *exec_ctx, const InsertPlanNode *
     : AbstractExecutor(exec_ctx),
       plan_(plan),
       table_info_(exec_ctx_->GetCatalog()->GetTable(plan_->TableOid())),
+      lock_manager_(exec_ctx_->GetLockManager()),
+      transaction_manager_(exec_ctx->GetTransactionManager()),
       child_executor_(std::move(child_executor)) {}
 
-void InsertExecutor::Init() { child_executor_->Init(); }
+void InsertExecutor::Init() {
+  Transaction *cur_transaction = exec_ctx_->GetTransaction();
+  lock_manager_->LockTable(cur_transaction, LockManager::LockMode::INTENTION_EXCLUSIVE, plan_->TableOid());
+  child_executor_->Init();
+}
 
 auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   if (done_) {
@@ -40,6 +47,7 @@ auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   }
 
   int32_t cnt = 0;
+  Transaction *cur_transaction = exec_ctx_->GetTransaction();
   while (true) {
     Tuple ch_tuple;
     RID ch_rid;
@@ -48,9 +56,14 @@ auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     }
 
     // insert into heapTable
-    auto result = table_info_->table_->InsertTuple({INVALID_TXN_ID, INVALID_TXN_ID, false}, ch_tuple);
+    auto result = table_info_->table_->InsertTuple({INVALID_TXN_ID, INVALID_TXN_ID, false}, ch_tuple, lock_manager_,
+                                                   cur_transaction, plan_->TableOid());
     BUSTUB_ENSURE(result.has_value(), "Fail to InsertExecutor InsertTuple");
     RID new_rid = result.value();
+    // record transaction write set for abort safty
+    TableWriteRecord w_record{plan_->TableOid(), new_rid, table_info_->table_.get()};
+    w_record.wtype_ = WType::INSERT;
+    cur_transaction->AppendTableWriteRecord(w_record);
 
     // update index
     std::vector<IndexInfo *> index_info = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);

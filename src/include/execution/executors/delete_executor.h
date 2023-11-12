@@ -61,6 +61,10 @@ class DeleteExecutor : public AbstractExecutor {
 
   const TableInfo *table_info_;
 
+  LockManager *lock_manager_;
+
+  TransactionManager *transaction_manager_;
+
   /** The child executor from which RIDs for deleted tuples are pulled */
   std::unique_ptr<AbstractExecutor> child_executor_;
 

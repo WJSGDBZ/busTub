@@ -119,7 +119,6 @@ class IndexWriteRecord {
  * Reason to a transaction abortion
  */
 enum class AbortReason {
-  NOTHING,
   LOCK_ON_SHRINKING,
   UPGRADE_CONFLICT,
   LOCK_SHARED_ON_READ_UNCOMMITTED,

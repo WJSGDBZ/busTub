@@ -15,8 +15,10 @@
 #include <algorithm>
 #include <condition_variable>  // NOLINT
 #include <list>
+#include <map>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -314,6 +316,8 @@ class LockManager {
    */
   auto RunCycleDetection() -> void;
 
+  auto BuildWaitForGraph() -> void;
+
   TransactionManager *txn_manager_;
 
  private:
@@ -328,8 +332,8 @@ class LockManager {
   auto UpgradeLockRow(Transaction *txn, LockMode curr_lock_mode, LockMode requested_lock_mode, const table_oid_t &oid,
                       const RID &rid, LockRequestQueue *que) -> bool;
   auto UpdateTransactionRowLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> bool;
-  auto UpdateTransactionRowUnLock(Transaction *txn, const table_oid_t &oid, const RID &rid, bool upgrade = false)
-      -> bool;
+  auto UpdateTransactionRowUnLock(Transaction *txn, const table_oid_t &oid, const RID &rid, bool force,
+                                  bool upgrade = false) -> bool;
   auto CanTxnTakeLockRow(Transaction *txn, LockMode lock_mode) -> bool;
 
   auto CanLockUpgrade(LockMode curr_lock_mode, LockMode requested_lock_mode) -> bool;
@@ -338,7 +342,7 @@ class LockManager {
   void GrantNewLocksIfPossible(LockRequestQueue *lock_request_queue);
   auto CheckAppropriateLockOnTable(Transaction *txn, const table_oid_t &oid, LockMode row_lock_mode) -> bool;
 
-  auto FindCycle(txn_id_t source_txn, std::vector<txn_id_t> &path, std::unordered_set<txn_id_t> &on_path,
+  auto FindCycle(txn_id_t source_txn, std::set<txn_id_t> &path, std::unordered_set<txn_id_t> &on_path,
                  std::unordered_set<txn_id_t> &visited, txn_id_t *abort_txn_id) -> bool;
   void UnlockAll();
 
@@ -355,7 +359,7 @@ class LockManager {
   std::atomic<bool> enable_cycle_detection_;
   std::thread *cycle_detection_thread_;
   /** Waits-for graph representation. */
-  std::unordered_map<txn_id_t, std::vector<txn_id_t>> waits_for_;
+  std::map<txn_id_t, std::set<txn_id_t>> waits_for_;
   std::mutex waits_for_latch_;
 };
 

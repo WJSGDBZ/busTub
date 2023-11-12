@@ -12,6 +12,7 @@
 
 #include <memory>
 
+#include "concurrency/transaction.h"
 #include "execution/executors/delete_executor.h"
 
 namespace bustub {
@@ -21,6 +22,8 @@ DeleteExecutor::DeleteExecutor(ExecutorContext *exec_ctx, const DeletePlanNode *
     : AbstractExecutor(exec_ctx),
       plan_(plan),
       table_info_(exec_ctx_->GetCatalog()->GetTable(plan_->TableOid())),
+      lock_manager_(exec_ctx_->GetLockManager()),
+      transaction_manager_(exec_ctx->GetTransactionManager()),
       child_executor_(std::move(child_executor)) {}
 
 void DeleteExecutor::Init() { child_executor_->Init(); }
@@ -31,6 +34,7 @@ auto DeleteExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   }
 
   int32_t cnt = 0;
+  Transaction *cur_transaction = exec_ctx_->GetTransaction();
   while (true) {
     Tuple ch_tuple;
     RID ch_rid;
@@ -40,6 +44,10 @@ auto DeleteExecutor::Next(Tuple *tuple, RID *rid) -> bool {
 
     // delete tuple in heapTable (set field "is_deleted_" to true)
     table_info_->table_->UpdateTupleMeta({INVALID_TXN_ID, INVALID_TXN_ID, true}, ch_rid);
+    // record transaction write set for abort safty
+    TableWriteRecord w_record{plan_->TableOid(), ch_rid, table_info_->table_.get()};
+    w_record.wtype_ = WType::DELETE;
+    cur_transaction->AppendTableWriteRecord(w_record);
 
     // update index
     std::vector<IndexInfo *> index_info = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);

@@ -12,6 +12,7 @@
 
 #include <cassert>
 #include <mutex>  // NOLINT
+#include <random>
 #include <utility>
 
 #include "common/config.h"

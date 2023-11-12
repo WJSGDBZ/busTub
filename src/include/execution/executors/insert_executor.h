@@ -57,7 +57,10 @@ class InsertExecutor : public AbstractExecutor {
  private:
   /** The insert plan node to be executed*/
   const InsertPlanNode *plan_;
-  TableInfo *table_info_;
+  const TableInfo *table_info_;
+  LockManager *lock_manager_;
+  TransactionManager *transaction_manager_;
+
   std::unique_ptr<AbstractExecutor> child_executor_;
   bool done_{false};
 };
